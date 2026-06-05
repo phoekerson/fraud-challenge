@@ -1,6 +1,6 @@
 # Hackathon IT — Détection de fraude financière par l'IA
 
-**Organisation :** [INTELO2026](https://github.com/INTELO2026)  
+**Organisation :** [CURSOR-INTELO2026](https://github.com/INTELO2026)  
 **Dépôt officiel :** https://github.com/INTELO2026/fraud-challenge
 
 > **Thème :** *L'Intelligence Artificielle au service de la sécurité financière : détecter, prévenir et combattre la fraude.*
