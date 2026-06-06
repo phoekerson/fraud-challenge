@@ -6,11 +6,17 @@ Dépôt cible : `INTELO2026/fraud-challenge`
 - **Nom / prénom :** 
 - **Email (optionnel) :** 
 
-### Défi fraude financière
+### Partie technique (notée automatiquement)
 
-- **Score CI (tests publics) :** _voir les checks GitHub sur cette PR_
+- **Score CI (tests publics) :** _voir l'onglet Checks de cette PR_
 - **Lien vers mon fork :** 
 
-### Notes (optionnel)
+### Partie interface (évaluée par le jury — pas la CI)
 
-_Décrivez brièvement votre approche (règles, scoring, idées IA…)_
+- **Commande pour lancer ma démo :** `streamlit run app.py`
+- **Ce que j'ai conçu dans `app.py` :** _décrivez en 2–3 phrases votre interface (public cible, choix UX…)_
+- **Capture ou lien démo (optionnel) :** _screenshot, Loom, etc._
+
+### Approche technique (optionnel)
+
+_Règles, scoring, idées IA dans `detect_fraud`…_

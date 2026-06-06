@@ -25,6 +25,9 @@ pip install -r requirements.txt
 pytest tests/ -v
 
 # 4. Implémentez detect_fraud dans fraud_detection.py
+
+# 5. Créez VOTRE interface intuitive dans app.py (base fournie)
+streamlit run app.py
 ```
 
 À chaque **push** sur votre fork et à chaque **pull request** vers le dépôt officiel, la CI relance les tests et affiche votre score **X/Y tests publics réussis**.
@@ -43,11 +46,28 @@ pytest tests/ -v
 
 ---
 
-## Interface à implémenter (pas de site web obligatoire)
+## Interface à créer (évaluée par le jury)
 
-Vous ne construisez **pas** une application web pour ce défi. Vous complétez l’**interface Python** imposée : la fonction `detect_fraud` (contrat fixe, testée par pytest). Vous pouvez utiliser des règles, des scores, ou de l’IA/ML **dans cette fonction** — tant que les tests passent.
+Un **squelette** `app.py` est fourni (Streamlit). **Vous devez le transformer** en interface **intuitive** pour que le jury et un public non technique comprennent votre solution.
 
-## Ce que vous devez implémenter
+```bash
+streamlit run app.py
+```
+
+À faire dans `render_interface()` :
+- expliquer clairement ce qui est suspect et pourquoi ;
+- présenter les résultats de façon visuelle (tableaux, cartes, couleurs, filtres, graphiques…) ;
+- guider l’utilisateur sans qu’il lise le code.
+
+**Important :**
+| Élément | Qui juge ? |
+|---------|------------|
+| `detect_fraud` + tests | **Automatique** (CI + classement X/21) |
+| `app.py` (votre interface) | **Jury humain** (repêchage, démo, créativité) |
+
+La CI **ne note pas** l’interface. Le jury l’utilisera pour **repêcher** des candidats intéressants au-delà du seul score technique.
+
+## Ce que vous devez implémenter (moteur de détection)
 
 Dans `fraud_detection.py`, complétez :
 
