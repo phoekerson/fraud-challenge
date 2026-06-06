@@ -369,14 +369,16 @@ def _decide_action(score, suspicious):
     """Voie de décision (friction dynamique / step-up auth).
 
     - approuver : risque faible, on laisse passer.
-    - verifier  : risque modéré -> on déclenche une authentification (MFA)
-                  pour lever le doute sans bloquer un client honnête.
-    - bloquer   : risque élevé et signal fort -> on bloque.
+    - verifier  : risque modéré -> authentification (MFA) pour lever le doute
+                  sans gêner un client honnête.
+    - suspendre : risque élevé -> transaction suspendue, libérée seulement après
+                  confirmation forte du client (Google / Microsoft Authenticator).
+    Les deux voies à risque exigent une confirmation MFA.
     """
     if not suspicious:
         return "approuver", False
     if score >= BLOCK_THRESHOLD:
-        return "bloquer", False
+        return "suspendre", True
     return "verifier", True
 
 

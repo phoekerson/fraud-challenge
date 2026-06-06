@@ -8,10 +8,15 @@ venv/
 .streamlit_upload.csv
 data/last_results.json
 data/mfa_state.json
+data/bank_demo.db
 
 # Logs de dev (serveurs locaux)
 _*.log
 _*.err
+
+# Fichiers de travail personnels (hors livrable)
+HACKATHON_IT_INTELO_2026_1.docx
+*.jpg
 
 # Réservé organisateurs — ne pas publier sur le dépôt participants
 organisateur/

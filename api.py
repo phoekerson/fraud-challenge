@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import db
 import mfa
 from fraud_detection import detect_fraud, load_transactions
 
@@ -97,6 +98,15 @@ class VerifyResponse(BaseModel):
     detail: str
 
 
+class DatabaseRequest(BaseModel):
+    database_url: Optional[str] = Field(
+        None, description="URL SQLAlchemy de la base de la banque. "
+                          "Vide = base de démonstration SQLite.",
+        examples=["postgresql+psycopg://user:pwd@host/db"])
+    table: str = "transactions"
+    limit: Optional[int] = None
+
+
 # ──────────────────────────────────────────────────────────────────────────
 #  Persistance JSON (état MFA + derniers résultats)
 # ──────────────────────────────────────────────────────────────────────────
@@ -127,7 +137,7 @@ def _summary(results: list[dict]) -> dict:
         "total": len(results),
         "approuver": actions.count("approuver"),
         "verifier": actions.count("verifier"),
-        "bloquer": actions.count("bloquer"),
+        "suspendre": actions.count("suspendre"),
         "alertes": sum(1 for r in results if r.get("is_suspicious")),
     }
 
@@ -140,8 +150,9 @@ def root():
     return {
         "service": "AEGIS",
         "docs": "/docs",
-        "endpoints": ["/analyze", "/analyze/csv", "/results",
-                      "/results/pending-mfa", "/mfa/enroll", "/mfa/verify"],
+        "endpoints": ["/analyze", "/analyze/csv", "/analyze/database",
+                      "/bank/transactions", "/results", "/results/pending-mfa",
+                      "/mfa/enroll", "/mfa/verify"],
     }
 
 
@@ -175,6 +186,30 @@ async def analyze_csv(file: UploadFile = File(...)):
     return {"summary": _summary(results), "results": results}
 
 
+@app.get("/bank/transactions", tags=["banque"])
+def bank_transactions(table: str = "transactions", limit: Optional[int] = None,
+                      database_url: Optional[str] = None):
+    """Lit les transactions directement dans la base de la banque (sans analyse)."""
+    try:
+        txs = db.load_transactions_from_db(database_url, table=table, limit=limit)
+    except Exception as exc:
+        raise HTTPException(502, f"Connexion base impossible : {exc}")
+    return {"count": len(txs), "source": database_url or db.default_database_url(),
+            "transactions": txs}
+
+
+@app.post("/analyze/database", response_model=AnalyzeResponse, tags=["banque"])
+def analyze_database(req: DatabaseRequest = DatabaseRequest()):
+    """Lit la base de la banque puis analyse toutes les transactions."""
+    try:
+        txs = db.load_transactions_from_db(req.database_url, table=req.table, limit=req.limit)
+    except Exception as exc:
+        raise HTTPException(502, f"Connexion base impossible : {exc}")
+    results = detect_fraud(txs)
+    _save_results(results)
+    return {"summary": _summary(results), "results": results}
+
+
 @app.get("/results", tags=["détection"])
 def get_results():
     """Renvoie les derniers résultats analysés (fichier JSON)."""
@@ -185,14 +220,14 @@ def get_results():
 
 @app.get("/results/pending-mfa", tags=["détection"])
 def pending_mfa():
-    """Transactions en attente d'authentification (voie « vérifier »)."""
+    """Transactions en attente de confirmation MFA (voies « vérifier » et « suspendre »)."""
     if not RESULTS_FILE.exists():
         raise HTTPException(404, "Aucun résultat. Appelez d'abord /analyze.")
     results = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
     state = _load_state()
     verified = set(state.get("verified", []))
     pending = [r for r in results
-               if r.get("recommended_action") == "verifier"
+               if r.get("mfa_required")
                and r.get("transaction_id") not in verified]
     return {"count": len(pending), "transactions": pending}
 

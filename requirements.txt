@@ -3,6 +3,9 @@ streamlit>=1.28
 pandas>=2.0
 fastapi>=0.110
 uvicorn>=0.29
+sqlalchemy>=2.0
 
-# Optionnel (QR code pour l'enrôlement MFA) : pip install "qrcode[pil]"
-# mfa.py fonctionne sans (il renvoie l'URI otpauth:// à défaut du QR).
+# Optionnel : pilote PostgreSQL pour lire la base d'une banque
+#   pip install "psycopg[binary]"   (puis DATABASE_URL=postgresql+psycopg://...)
+# Optionnel : QR code pour l'enrôlement MFA
+#   pip install "qrcode[pil]"  (mfa.py renvoie l'URI otpauth:// à défaut du QR)

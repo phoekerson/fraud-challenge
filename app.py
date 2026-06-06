@@ -131,7 +131,7 @@ def _action_style(action: str):
     return {
         "approuver": ("safe", "Approuvée", "safe"),
         "verifier": ("verify", "À vérifier · MFA", "mid"),
-        "bloquer": ("high", "Bloquée", "high"),
+        "suspendre": ("high", "Suspendue · MFA", "high"),
     }.get(action, ("mid", "À examiner", "mid"))
 
 
@@ -195,14 +195,14 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
             return "verifiee"
         return r.get("recommended_action", "approuver")
 
-    n_block = sum(1 for r in results if lane(r) == "bloquer")
+    n_suspend = sum(1 for r in results if lane(r) == "suspendre")
     n_verify = sum(1 for r in results if lane(r) == "verifier")
     n_verified = sum(1 for r in results if lane(r) == "verifiee")
-    n_approve = n - n_block - n_verify - n_verified
+    n_approve = n - n_suspend - n_verify - n_verified
 
     amount_at_risk = 0.0
     for r in results:
-        if lane(r) in ("bloquer", "verifier"):
+        if lane(r) in ("suspendre", "verifier"):
             amt = by_id.get(r["transaction_id"], {}).get("amount")
             if isinstance(amt, (int, float)) and amt > 0:
                 amount_at_risk += amt
@@ -214,8 +214,8 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
           <span class="pill">  Détection de fraude + authentification (MFA)</span>
           <h1>AEGIS</h1>
           <p>Trois voies de décision : on <b>approuve</b> l'habituel, on <b>vérifie</b>
-          le doute par authentification (MFA) pour éviter les faux positifs,
-          on <b>bloque</b> la fraude évidente.</p>
+          le doute par authentification (MFA), on <b>suspend</b> la fraude probable
+          jusqu'à confirmation du client (Google / Microsoft Authenticator).</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -231,8 +231,8 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
             <div class="value">{n_approve}</div><div class="sub">voie verte</div></div>
           <div class="kpi alert"><div class="label">À vérifier · MFA</div>
             <div class="value">{n_verify}</div><div class="sub">authentification requise</div></div>
-          <div class="kpi"><div class="label">Bloquées</div>
-            <div class="value">{n_block}</div><div class="sub">fraude probable</div></div>
+          <div class="kpi"><div class="label">Suspendues</div>
+            <div class="value">{n_suspend}</div><div class="sub">en attente de confirmation</div></div>
           <div class="kpi"><div class="label">Faux positifs évités</div>
             <div class="value">{n_verified}</div><div class="sub">levés par MFA</div></div>
         </div>
@@ -245,8 +245,8 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
     with c1:
         st.markdown('<div class="sect">Voies de <span>décision</span></div>', unsafe_allow_html=True)
         dist = pd.DataFrame(
-            {"Voie": ["Approuvées", "Vérifiées (MFA)", "À vérifier", "Bloquées"],
-             "Nombre": [n_approve, n_verified, n_verify, n_block]}
+            {"Voie": ["Approuvées", "Vérifiées (MFA)", "À vérifier", "Suspendues"],
+             "Nombre": [n_approve, n_verified, n_verify, n_suspend]}
         ).set_index("Voie")
         st.bar_chart(dist, color=ORANGE, height=240)
 
@@ -278,7 +278,7 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
         tid = r["transaction_id"]
         tx = by_id.get(tid, {})
         cur_lane = lane(r)
-        if only_alerts and cur_lane not in ("bloquer", "verifier"):
+        if only_alerts and cur_lane not in ("suspendre", "verifier"):
             continue
         if country_sel != "Tous" and (tx.get("country") or "—") != country_sel:
             continue
@@ -318,7 +318,7 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
                 '<div class="verified-note">✅ Identité confirmée par le client — '
                 'transaction validée (faux positif évité).</div>',
                 unsafe_allow_html=True)
-        elif cur_lane == "verifier":
+        elif cur_lane in ("verifier", "suspendre"):
             _render_mfa_challenge(tid)
 
     if shown == 0:
@@ -329,15 +329,15 @@ def render_interface(transactions: list[dict], results: list[dict]) -> None:
     # — Pédagogie : comment AEGIS décide —
     st.markdown('<div class="sect">Comment AEGIS <span>décide</span> ?</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-muted">Des règles métier explicables (pas une boîte noire) '
-                'et 3 voies : approuver · vérifier par MFA · bloquer.</div>',
+                'et 3 voies : approuver · vérifier par MFA · suspendre.</div>',
                 unsafe_allow_html=True)
     rules = [
         ("🟢 Approuver", "risque faible : transaction conforme au profil, on laisse passer sans friction."),
-        ("🔐 Vérifier par MFA", "risque modéré : on demande au client de confirmer son identité (code) — évite de bloquer un honnête client."),
-        ("🔴 Bloquer", "risque élevé et signal fort : montant aberrant, voyage impossible, montant négatif…"),
+        ("🔐 Vérifier par MFA", "risque modéré : le client confirme son identité (code) — évite de gêner un honnête client."),
+        ("⏸️ Suspendre", "risque élevé : transaction suspendue, libérée seulement après confirmation via Google / Microsoft Authenticator."),
         ("Voyage impossible", "deux pays trop distants en trop peu de temps (calcul distance ÷ temps)."),
         ("Rafale / test de carte", "trop d'opérations en quelques minutes — typique du test de carte volée."),
-        ("Faux positif évité", "un achat inhabituel mais cohérent (ou confirmé par MFA) n'est PAS bloqué."),
+        ("Faux positif évité", "un achat inhabituel mais cohérent (ou confirmé par MFA) n'est PAS pénalisé."),
     ]
     rc1, rc2 = st.columns(2)
     for i, (title, desc) in enumerate(rules):
