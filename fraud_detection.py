@@ -61,6 +61,7 @@ def _clean_row(row):
 #  Paramètres du moteur (seuils ajustables)
 # ──────────────────────────────────────────────────────────────────────────
 SUSPICION_THRESHOLD = 0.5          # score >= seuil  ->  is_suspicious = True
+BLOCK_THRESHOLD = 0.8              # >= seuil -> blocage ; entre les deux -> MFA
 REQUIRED_FIELDS = ("user_id", "currency", "country")
 
 # Anomalie de montant vs historique du client
@@ -199,6 +200,8 @@ def detect_fraud(transactions):
                 "fraud_score": 0.0,
                 "is_suspicious": False,
                 "reason": "Analyse impossible — transaction conservée par défaut",
+                "recommended_action": "approuver",
+                "mfa_required": False,
             })
     return results
 
@@ -302,7 +305,8 @@ def _amount_anomaly(tx, profile):
 def _score_transaction(tx, idx, profiles, geo, burst, fanout, duplicates):
     if not isinstance(tx, dict):
         return {"transaction_id": None, "fraud_score": 0.0,
-                "is_suspicious": False, "reason": "Transaction illisible"}
+                "is_suspicious": False, "reason": "Transaction illisible",
+                "recommended_action": "approuver", "mfa_required": False}
 
     tid = tx.get("user_id")
     profile = profiles.get(tid, {"amounts": [], "timeline": []})
@@ -361,12 +365,29 @@ def _context_signal(tx, profile):
     return None
 
 
+def _decide_action(score, suspicious):
+    """Voie de décision (friction dynamique / step-up auth).
+
+    - approuver : risque faible, on laisse passer.
+    - verifier  : risque modéré -> on déclenche une authentification (MFA)
+                  pour lever le doute sans bloquer un client honnête.
+    - bloquer   : risque élevé et signal fort -> on bloque.
+    """
+    if not suspicious:
+        return "approuver", False
+    if score >= BLOCK_THRESHOLD:
+        return "bloquer", False
+    return "verifier", True
+
+
 def _combine(tx, signals):
     """Fusionne les signaux : base = plus fort, léger renfort si plusieurs concordent."""
     tid = tx.get("transaction_id")
     if not signals:
+        action, mfa = _decide_action(0.0, False)
         return {"transaction_id": tid, "fraud_score": 0.0, "is_suspicious": False,
-                "reason": "Transaction conforme au profil du client"}
+                "reason": "Transaction conforme au profil du client",
+                "recommended_action": action, "mfa_required": mfa}
 
     signals.sort(key=lambda s: s[0], reverse=True)
     base, reason = signals[0]
@@ -376,9 +397,14 @@ def _combine(tx, signals):
     if corroborating and corroborating[0][1] != reason:
         reason = f"{reason} · {corroborating[0][1]}"
 
+    suspicious = bool(score >= SUSPICION_THRESHOLD)
+    action, mfa = _decide_action(score, suspicious)
+
     return {
         "transaction_id": tid,
         "fraud_score": round(float(score), 2),
-        "is_suspicious": bool(score >= SUSPICION_THRESHOLD),
+        "is_suspicious": suspicious,
         "reason": reason,
+        "recommended_action": action,
+        "mfa_required": mfa,
     }
