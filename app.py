@@ -81,11 +81,9 @@ html, body, [class*="css"], .stApp { font-family:'Plus Jakarta Sans', sans-serif
 /* Alert cards */
 .alertcard {
   background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-  border:1px solid rgba(255,255,255,.08); border-left:4px solid var(--orange);
+  border:1px solid rgba(255,255,255,.08);
   border-radius:16px; padding:16px 18px; margin-bottom:12px;
 }
-.alertcard.high { border-left-color:#EF4444; }
-.alertcard.mid  { border-left-color:#F59E0B; }
 .alertcard .top { display:flex; justify-content:space-between; align-items:center; }
 .alertcard .tid { font-weight:700; color:#F4F4F6; font-size:1rem; }
 .alertcard .reason { color:#D8D8DC; margin:8px 0 10px; font-size:.95rem; }
@@ -102,7 +100,6 @@ html, body, [class*="css"], .stApp { font-family:'Plus Jakarta Sans', sans-serif
        border-radius:0 0 16px 16px; border-top:none; margin:-12px 0 12px; padding:12px 16px 4px; }
 .mfa .h { color:#A5B4FC; font-weight:700; font-size:.86rem; margin-bottom:2px; }
 .mfa .d { color:#9A9AA6; font-size:.82rem; margin-bottom:8px; }
-.alertcard.verify { border-left-color:#818CF8; }
 .verified-note { color:#6EE7B7; font-size:.84rem; font-weight:600; margin:-6px 0 12px; padding-left:4px; }
 
 /* Risk meter */
@@ -160,27 +157,23 @@ def _render_mfa_challenge(tid: str) -> None:
         'à usage unique avant de valider — au lieu de le bloquer.</div></div>',
         unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c1:
-        if st.button("📲 Envoyer le code OTP", key=f"send_{tid}", width="stretch"):
-            ss.mfa_codes[tid] = f"{random.randint(0, 999999):06d}"
+    if st.button("📲 Envoyer le code OTP au client", key=f"send_{tid}"):
+        ss.mfa_codes[tid] = f"{random.randint(0, 999999):06d}"
 
     code = ss.mfa_codes.get(tid)
     if code:
-        with c1:
-            st.info(f"Code envoyé au client (démo) : **{code}**")
-        with c2:
-            entered = st.text_input("Code reçu par le client", key=f"otp_{tid}",
-                                    max_chars=6, placeholder="6 chiffres")
-        with c3:
-            st.write("")
-            if st.button("✅ Valider l'identité", key=f"val_{tid}", width="stretch"):
-                if entered == code:
-                    ss.mfa_verified.add(tid)
-                    ss.mfa_codes.pop(tid, None)
-                    st.rerun()
-                else:
-                    st.error("Code incorrect — la transaction reste à vérifier.")
+        st.info(f"Code envoyé au client (démo) : **{code}**")
+        with st.form(key=f"form_{tid}", clear_on_submit=False):
+            entered = st.text_input("Code reçu par le client", max_chars=6,
+                                    placeholder="6 chiffres")
+            submitted = st.form_submit_button("✅ Valider l'identité")
+        if submitted:
+            if entered.strip() == code:
+                ss.mfa_verified.add(tid)
+                ss.mfa_codes.pop(tid, None)
+                st.rerun()
+            else:
+                st.error("Code incorrect — la transaction reste à vérifier.")
 
 
 # ──────────────────────────────────────────────────────────────────────────

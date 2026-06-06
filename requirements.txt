@@ -1,3 +1,8 @@
 pytest>=7.0
 streamlit>=1.28
 pandas>=2.0
+fastapi>=0.110
+uvicorn>=0.29
+
+# Optionnel (QR code pour l'enrôlement MFA) : pip install "qrcode[pil]"
+# mfa.py fonctionne sans (il renvoie l'URI otpauth:// à défaut du QR).

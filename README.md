@@ -131,4 +131,29 @@ from fraud_detection import load_transactions, detect_fraud
 resultats = detect_fraud(load_transactions("data/sample_transactions.csv"))
 ```
 
+---
+
+## Bonus — API REST + authentification forte (MFA)
+
+En plus de l'interface, une **API** (`api.py`, FastAPI) permet à une entreprise de
+paiement de récupérer les verdicts en **JSON** et d'appliquer une **authentification
+multi-facteurs** sur les transactions douteuses, plutôt que de les bloquer
+(réduction des faux positifs).
+
+```bash
+uvicorn api:app --reload      # doc interactive : http://localhost:8000/docs
+```
+
+| Endpoint | Rôle |
+|----------|------|
+| `POST /analyze` | analyse des transactions (JSON) → verdicts JSON |
+| `POST /analyze/csv` | idem à partir d'un fichier CSV |
+| `GET /results` · `GET /results/pending-mfa` | derniers résultats / transactions à vérifier |
+| `POST /mfa/enroll` | enrôle un client → secret + URI `otpauth://` (QR) |
+| `POST /mfa/verify` | vérifie un code TOTP → valide la transaction |
+
+Le MFA est un **TOTP RFC 6238** (HMAC-SHA1, 6 chiffres, 30 s) **compatible
+Google Authenticator et Microsoft Authenticator** — implémenté en bibliothèque
+standard (`mfa.py`), sans dépendance externe.
+
 Bon courage !

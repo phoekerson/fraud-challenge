@@ -4,6 +4,15 @@ __pycache__/
 .venv/
 venv/
 
+# Artefacts d'exécution de l'API (générés au runtime)
+.streamlit_upload.csv
+data/last_results.json
+data/mfa_state.json
+
+# Logs de dev (serveurs locaux)
+_*.log
+_*.err
+
 # Réservé organisateurs — ne pas publier sur le dépôt participants
 organisateur/
 Ressources/
